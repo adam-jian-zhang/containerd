@@ -1,0 +1,20 @@
+{{ define "main" }}
+<article class="doc-content">
+    {{ .Content }}
+</article>
+
+{{ if or .NextInSection .PrevInSection }}
+<nav class="doc-navigation">
+    {{ if .NextInSection }}
+    <a href="{{ .NextInSection.Permalink }}" class="nav-prev">
+        ← {{ .NextInSection.Title }}
+    </a>
+    {{ end }}
+    {{ if .PrevInSection }}
+    <a href="{{ .PrevInSection.Permalink }}" class="nav-next">
+        {{ .PrevInSection.Title }} →
+    </a>
+    {{ end }}
+</nav>
+{{ end }}
+{{ end }}

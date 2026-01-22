@@ -1,0 +1,455 @@
+<!doctype html><html lang=en-us><head><meta charset=UTF-8><meta name=viewport content="width=device-width,initial-scale=1"><title>containerd Plugins Architecture | containerd Documentation</title><meta name=description content="Comprehensive technical documentation for containerd"><link rel=stylesheet href=/css/style.css></head><body><div class=container><aside class=sidebar id=sidebar><div class=sidebar-header><div class=logo><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+<span class=logo-text>containerd</span></div></div><nav class=sidebar-nav><ul class=nav-list><li class=nav-item><a href=/docs/00-architecture-overview/ title=Architecture class=nav-link><span class=nav-icon>📄</span>
+<span class=nav-text>Architecture</span></a></li><li class=nav-item><a href=/docs/01-api-layer/ title="API Layer" class=nav-link><span class=nav-icon>📄</span>
+<span class=nav-text>API Layer</span></a></li><li class=nav-item><a href=/docs/02-core-packages/ title="Core Packages" class=nav-link><span class=nav-icon>📄</span>
+<span class=nav-text>Core Packages</span></a></li><li class=nav-item><a href=/docs/03-plugins/ title=Plugins class=nav-link><span class=nav-icon>📄</span>
+<span class=nav-text>Plugins</span></a></li><li class=nav-item><a href=/docs/04-client-sdk/ title="Client SDK" class=nav-link><span class=nav-icon>📄</span>
+<span class=nav-text>Client SDK</span></a></li></ul></nav><div class=sidebar-footer><span class=footer-text>v2.0+ docs</span></div></aside><main class=content><header class=header><div class=header-content><button class=menu-toggle id=menuToggle aria-label="Toggle menu">
+<span class=menu-icon></span></button><h1 class=site-title><a href=/>containerd Documentation</a></h1><button class=theme-toggle id=themeToggle aria-label="Toggle theme">
+<svg class="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+<svg class="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></button></div></header><div class=content-wrapper><article class=doc-content><h1 id=containerd-plugins-architecture>containerd Plugins Architecture</h1><h2 id=overview>Overview</h2><p>containerd is built around a plugin-based architecture that allows extending functionality without modifying the core daemon. Plugins implement the interfaces defined in the core packages and are loaded dynamically at runtime.</p><p><strong>Location</strong>: <code>plugins/</code></p><h2 id=plugin-system-architecture>Plugin System Architecture</h2><figure class=diagram><img src=/images/diagrams/diagram-0eeda8285e9c.svg alt=Diagram loading=lazy></figure><h2 id=plugin-types>Plugin Types</h2><h3 id=plugin-type-definitions>Plugin Type Definitions</h3><p><strong>File</strong>: <code>plugins/types.go</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>const</span> (
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// InternalPlugin implements an internal plugin to containerd</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>InternalPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.internal.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// RuntimePlugin implements a runtime</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>RuntimePlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.runtime.v1&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>RuntimePluginV2</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.runtime.v2&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ServicePlugin implements an internal service</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ServicePlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.service.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// GRPCPlugin implements a grpc service</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>GRPCPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.grpc.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// TTRPCPlugin implements a ttrpc shim service</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>TTRPCPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.ttrpc.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// SnapshotPlugin implements a snapshotter</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>SnapshotPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.snapshotter.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// TaskMonitorPlugin implements a task monitor</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>TaskMonitorPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.monitor.task.v1&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ContainerMonitorPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.monitor.container.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// DiffPlugin implements a differ</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>DiffPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.differ.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// MetadataPlugin implements a metadata store</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>MetadataPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.metadata.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ContentPlugin implements a content store</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ContentPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.content.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// GCPlugin implements garbage collection policy</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>GCPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.gc.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// EventPlugin implements event handling</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>EventPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.event.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// LeasePlugin implements lease manager</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>LeasePlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.lease.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// StreamingPlugin implements a stream manager</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>StreamingPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.streaming.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// SandboxControllerPlugin implements a sandbox controller</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>SandboxControllerPlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.sandbox.controller.v1&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// CRIServicePlugin implements a cri service</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>CRIServicePlugin</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span> = <span style=color:#e6db74>&#34;io.containerd.cri.v1&#34;</span>
+</span></span><span style=display:flex><span>)
+</span></span></code></pre></div><h2 id=plugin-registration>Plugin Registration</h2><h3 id=registration-pattern>Registration Pattern</h3><p>Plugins register themselves using the <code>init()</code> function:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#f92672>package</span> <span style=color:#a6e22e>plugin</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#f92672>import</span> (
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;github.com/containerd/plugin&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;github.com/containerd/plugin/registry&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#e6db74>&#34;github.com/containerd/containerd/v2/plugins&#34;</span>
+</span></span><span style=display:flex><span>)
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ContentPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;content&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Initialize plugin</span>
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>root</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Properties</span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>PropertyRootDir</span>]
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>local</span>.<span style=color:#a6e22e>NewStore</span>(<span style=color:#a6e22e>root</span>)
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=plugin-registration-structure>Plugin Registration Structure</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Registration</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Type of the plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Type</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ID of the plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ID</span> <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Requires lists plugin dependencies</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Requires</span> []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Config for the plugin (TOML-decodable struct)</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Config</span> <span style=color:#66d9ef>interface</span>{}
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ConfigMigration function for config upgrades</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ConfigMigration</span> <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>context</span>.<span style=color:#a6e22e>Context</span>, <span style=color:#66d9ef>int</span>, <span style=color:#66d9ef>interface</span>{}) <span style=color:#66d9ef>error</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// InitFn initializes the plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>InitFn</span> <span style=color:#66d9ef>func</span>(<span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=plugin-initialization-context>Plugin Initialization Context</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>InitContext</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Context</span>    <span style=color:#a6e22e>context</span>.<span style=color:#a6e22e>Context</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Root</span>       <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>State</span>      <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Config</span>     <span style=color:#66d9ef>interface</span>{}
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Properties</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Meta</span>       <span style=color:#f92672>*</span><span style=color:#a6e22e>Meta</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// GetByID gets a plugin by type and ID</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>GetByID</span>(<span style=color:#a6e22e>t</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>, <span style=color:#a6e22e>id</span> <span style=color:#66d9ef>string</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>)
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// GetSingle gets a single plugin by type</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>GetSingle</span>(<span style=color:#a6e22e>t</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>)
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// GetByType gets all plugins of a type</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>GetByType</span>(<span style=color:#a6e22e>t</span> <span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>) (<span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>)
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=plugin-loading-flow>Plugin Loading Flow</h3><figure class=diagram><img src=/images/diagrams/diagram-114aeb726739.svg alt=Diagram loading=lazy></figure><h2 id=core-plugin-implementations>Core Plugin Implementations</h2><h3 id=1-content-plugin>1. Content Plugin</h3><p><strong>Location</strong>: <code>plugins/content/local/</code><br><strong>Type</strong>: <code>ContentPlugin</code><br><strong>ID</strong>: <code>content</code></p><p>Implements local filesystem-based content storage.</p><h4 id=registration>Registration</h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ContentPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;content&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>root</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Properties</span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>PropertyRootDir</span>]
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Exports</span>[<span style=color:#e6db74>&#34;root&#34;</span>] = <span style=color:#a6e22e>root</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>local</span>.<span style=color:#a6e22e>NewStore</span>(<span style=color:#a6e22e>root</span>)
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=implementation>Implementation</h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>store</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>root</span>               <span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ls</span>                 <span style=color:#a6e22e>LabelStore</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>integritySupported</span> <span style=color:#66d9ef>bool</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>locks</span>              <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#f92672>*</span><span style=color:#a6e22e>lock</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>NewStore</span>(<span style=color:#a6e22e>root</span> <span style=color:#66d9ef>string</span>) (<span style=color:#a6e22e>content</span>.<span style=color:#a6e22e>Store</span>, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Create content store directories</span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Initialize lock management</span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Check fsverity support</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=storage-layout>Storage Layout</h4><pre tabindex=0><code>&lt;root&gt;/
+├── blobs/
+│   └── sha256/
+│       ├── &lt;digest1&gt;
+│       └── &lt;digest2&gt;
+└── ingest/
+    └── &lt;ref&gt;-&lt;random&gt;
+</code></pre><h3 id=2-snapshot-plugins>2. Snapshot Plugins</h3><p><strong>Location</strong>: <code>plugins/snapshots/</code></p><p>Multiple snapshot implementations are available:</p><h4 id=overlay-snapshotter>Overlay Snapshotter</h4><p><strong>Type</strong>: <code>SnapshotPlugin</code><br><strong>ID</strong>: <code>overlayfs</code><br><strong>Platform</strong>: Linux</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>:   <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>SnapshotPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:     <span style=color:#e6db74>&#34;overlayfs&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Config</span>: <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>Config</span>{},
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Platforms</span> = append(<span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Platforms</span>, <span style=color:#a6e22e>platforms</span>.<span style=color:#a6e22e>DefaultSpec</span>())
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>config</span>, <span style=color:#a6e22e>ok</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Config</span>.(<span style=color:#f92672>*</span><span style=color:#a6e22e>Config</span>)
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>root</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Properties</span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>PropertyRootDir</span>]
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>var</span> <span style=color:#a6e22e>oOpts</span> []<span style=color:#a6e22e>overlay</span>.<span style=color:#a6e22e>Opt</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> <span style=color:#a6e22e>config</span>.<span style=color:#a6e22e>UpperdirLabel</span> {
+</span></span><span style=display:flex><span>                <span style=color:#a6e22e>oOpts</span> = append(<span style=color:#a6e22e>oOpts</span>, <span style=color:#a6e22e>overlay</span>.<span style=color:#a6e22e>WithUpperdirLabel</span>)
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> !<span style=color:#a6e22e>config</span>.<span style=color:#a6e22e>SyncRemove</span> {
+</span></span><span style=display:flex><span>                <span style=color:#a6e22e>oOpts</span> = append(<span style=color:#a6e22e>oOpts</span>, <span style=color:#a6e22e>overlay</span>.<span style=color:#a6e22e>AsynchronousRemove</span>)
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>overlay</span>.<span style=color:#a6e22e>NewSnapshotter</span>(<span style=color:#a6e22e>root</span>, <span style=color:#a6e22e>oOpts</span><span style=color:#f92672>...</span>)
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>Configuration</strong>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml><span style=display:flex><span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#e6db74>&#34;io.containerd.snapshotter.v1.overlayfs&#34;</span>]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>root_path</span> = <span style=color:#e6db74>&#34;/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs&#34;</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>upperdir_label</span> = <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>sync_remove</span> = <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mount_options</span> = []
+</span></span></code></pre></div><p><strong>Features</strong>:</p><ul><li>Uses Linux OverlayFS</li><li>Supports ID-mapped mounts for user namespaces</li><li>Asynchronous removal for performance</li><li>Optional upperdir labeling</li></ul><h4 id=btrfs-snapshotter>Btrfs Snapshotter</h4><p><strong>Type</strong>: <code>SnapshotPlugin</code><br><strong>ID</strong>: <code>btrfs</code><br><strong>Platform</strong>: Linux</p><p>Uses Btrfs subvolumes for snapshots:</p><ul><li>Copy-on-write snapshots</li><li>Native Btrfs features</li><li>Efficient space usage</li></ul><h4 id=devmapper-snapshotter>DevMapper Snapshotter</h4><p><strong>Type</strong>: <code>SnapshotPlugin</code><br><strong>ID</strong>: <code>devmapper</code><br><strong>Platform</strong>: Linux</p><p>Uses device mapper thin provisioning:</p><ul><li>Block-level snapshots</li><li>Thin provisioning</li><li>Direct block device access</li></ul><h4 id=native-snapshotter>Native Snapshotter</h4><p><strong>Type</strong>: <code>SnapshotPlugin</code><br><strong>ID</strong>: <code>native</code><br><strong>Platform</strong>: Windows</p><p>Windows-specific snapshotter:</p><ul><li>Uses Windows filesystem features</li><li>NTFS hard links</li><li>Windows containers support</li></ul><h4 id=erofs-snapshotter>EROFS Snapshotter</h4><p><strong>Type</strong>: <code>SnapshotPlugin</code><br><strong>ID</strong>: <code>erofs</code><br><strong>Platform</strong>: Linux</p><p>Enhanced Read-Only File System:</p><ul><li>Optimized for read-only layers</li><li>Better compression</li><li>Improved performance</li></ul><h3 id=3-diff-plugins>3. Diff Plugins</h3><p><strong>Location</strong>: <code>plugins/diff/</code></p><h4 id=walking-differ>Walking Differ</h4><p><strong>Type</strong>: <code>DiffPlugin</code><br><strong>ID</strong>: <code>walking</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>DiffPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;walking&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>md</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>GetSingle</span>(<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>)
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>cs</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>md</span>.(<span style=color:#f92672>*</span><span style=color:#a6e22e>metadata</span>.<span style=color:#a6e22e>DB</span>).<span style=color:#a6e22e>ContentStore</span>()
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>walking</span>.<span style=color:#a6e22e>NewWalkingDiff</span>(<span style=color:#a6e22e>cs</span>)
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>Features</strong>:</p><ul><li>Filesystem walking for diff computation</li><li>Tar stream generation</li><li>Layer application</li></ul><h4 id=erofs-differ>EROFS Differ</h4><p><strong>Type</strong>: <code>DiffPlugin</code><br><strong>ID</strong>: <code>erofs</code><br><strong>Platform</strong>: Linux</p><p>Optimized differ for EROFS:</p><ul><li>Direct EROFS image creation</li><li>No intermediate tar</li><li>Better performance</li></ul><h3 id=4-service-plugins>4. Service Plugins</h3><p><strong>Location</strong>: <code>plugins/services/</code></p><p>Service plugins expose gRPC services:</p><h4 id=containers-service>Containers Service</h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>GRPCPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;containers&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ServicePlugin</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>i</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>GetByID</span>(<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ServicePlugin</span>, <span style=color:#a6e22e>services</span>.<span style=color:#a6e22e>ContainersService</span>)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>service</span>{<span style=color:#a6e22e>local</span>: <span style=color:#a6e22e>i</span>.(<span style=color:#a6e22e>api</span>.<span style=color:#a6e22e>ContainersClient</span>)}, <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=images-service>Images Service</h4><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>GRPCPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;images&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ServicePlugin</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>i</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>GetByID</span>(<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ServicePlugin</span>, <span style=color:#a6e22e>services</span>.<span style=color:#a6e22e>ImagesService</span>)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>service</span>{<span style=color:#a6e22e>local</span>: <span style=color:#a6e22e>i</span>.(<span style=color:#a6e22e>imagesapi</span>.<span style=color:#a6e22e>ImagesClient</span>)}, <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h4 id=tasks-service>Tasks Service</h4><p>Manages task execution:</p><ul><li>Task creation and deletion</li><li>Process management</li><li>I/O handling</li><li>Metrics collection</li></ul><h4 id=snapshots-service>Snapshots Service</h4><p>Proxies to snapshot plugins:</p><ul><li>Multi-snapshotter support</li><li>Snapshot lifecycle management</li><li>Mount point generation</li></ul><h3 id=5-metadata-plugin>5. Metadata Plugin</h3><p><strong>Type</strong>: <code>MetadataPlugin</code><br><strong>ID</strong>: <code>bolt</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;bolt&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ContentPlugin</span>,
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>SnapshotPlugin</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Config</span>: <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>Config</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>ContentSharingPolicy</span>: <span style=color:#a6e22e>SharingPolicyShared</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>root</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Properties</span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>PropertyRootDir</span>]
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>path</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>filepath</span>.<span style=color:#a6e22e>Join</span>(<span style=color:#a6e22e>root</span>, <span style=color:#e6db74>&#34;meta.db&#34;</span>)
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>db</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>bolt</span>.<span style=color:#a6e22e>Open</span>(<span style=color:#a6e22e>path</span>, <span style=color:#ae81ff>0644</span>, <span style=color:#66d9ef>nil</span>)
+</span></span><span style=display:flex><span>            
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Initialize metadata DB with content and snapshot stores</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>metadata</span>.<span style=color:#a6e22e>NewDB</span>(<span style=color:#a6e22e>db</span>, <span style=color:#a6e22e>cs</span>, <span style=color:#a6e22e>snapshotters</span>)
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>Responsibilities</strong>:</p><ul><li>BoltDB management</li><li>Metadata storage for all resources</li><li>Garbage collection coordination</li><li>Transaction management</li></ul><h3 id=6-gc-plugin>6. GC Plugin</h3><p><strong>Type</strong>: <code>GCPlugin</code><br><strong>ID</strong>: <code>scheduler</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>GCPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;scheduler&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Config</span>: <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>Config</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>PauseThreshold</span>:  <span style=color:#ae81ff>0.02</span>,
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>DeletionThreshold</span>: <span style=color:#ae81ff>0</span>,
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>MutationThreshold</span>: <span style=color:#ae81ff>100</span>,
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>ScheduleDelay</span>:     <span style=color:#e6db74>&#34;0s&#34;</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#75715e>// Initialize GC scheduler</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>gc</span>.<span style=color:#a6e22e>NewScheduler</span>(<span style=color:#a6e22e>db</span>, <span style=color:#a6e22e>config</span>)
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>Configuration</strong>:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml><span style=display:flex><span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#e6db74>&#34;io.containerd.gc.v1.scheduler&#34;</span>]
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>pause_threshold</span> = <span style=color:#ae81ff>0.02</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>deletion_threshold</span> = <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>mutation_threshold</span> = <span style=color:#ae81ff>100</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>schedule_delay</span> = <span style=color:#e6db74>&#34;0s&#34;</span>
+</span></span><span style=display:flex><span>  <span style=color:#a6e22e>startup_delay</span> = <span style=color:#e6db74>&#34;100ms&#34;</span>
+</span></span></code></pre></div><p><strong>Features</strong>:</p><ul><li>Scheduled garbage collection</li><li>Threshold-based triggering</li><li>Lease-aware collection</li><li>Incremental cleanup</li></ul><h3 id=7-events-plugin>7. Events Plugin</h3><p><strong>Type</strong>: <code>EventPlugin</code><br><strong>ID</strong>: <code>exchange</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>EventPlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;exchange&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>exchange</span>.<span style=color:#a6e22e>NewExchange</span>(), <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>Features</strong>:</p><ul><li>Event broadcasting</li><li>Topic-based filtering</li><li>Multiple subscribers</li><li>Namespace isolation</li></ul><h3 id=8-leases-plugin>8. Leases Plugin</h3><p><strong>Type</strong>: <code>LeasePlugin</code><br><strong>ID</strong>: <code>manager</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>init</span>() {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>LeasePlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;manager&#34;</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>,
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>m</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>GetSingle</span>(<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>)
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>m</span>.(<span style=color:#f92672>*</span><span style=color:#a6e22e>metadata</span>.<span style=color:#a6e22e>DB</span>).<span style=color:#a6e22e>LeaseManager</span>(), <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>    })
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p><strong>Features</strong>:</p><ul><li>Resource lease management</li><li>Expiration handling</li><li>GC protection</li><li>Resource tracking</li></ul><h3 id=9-streaming-plugin>9. Streaming Plugin</h3><p><strong>Type</strong>: <code>StreamingPlugin</code><br><strong>ID</strong>: <code>manager</code></p><p>Manages streaming operations for CRI:</p><ul><li>Exec streaming</li><li>Attach streaming</li><li>Port-forward streaming</li></ul><h3 id=10-transfer-plugin>10. Transfer Plugin</h3><p><strong>Type</strong>: <code>TransferPlugin</code><br><strong>ID</strong>: <code>local</code></p><p>Handles image transfer operations:</p><ul><li>Image pull</li><li>Image push</li><li>Image import/export</li><li>Progress tracking</li></ul><h2 id=plugin-dependencies>Plugin Dependencies</h2><h3 id=dependency-graph>Dependency Graph</h3><figure class=diagram><img src=/images/diagrams/diagram-125cd3eb576f.svg alt=Diagram loading=lazy></figure><h3 id=dependency-resolution>Dependency Resolution</h3><p>Plugins declare dependencies via <code>Requires</code> field:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Type</span>: <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>GRPCPlugin</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ID</span>:   <span style=color:#e6db74>&#34;containers&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ServicePlugin</span>,
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>,
+</span></span><span style=display:flex><span>    },
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Dependencies available via ic.GetByID()</span>
+</span></span><span style=display:flex><span>    },
+</span></span><span style=display:flex><span>})
+</span></span></code></pre></div><p><strong>Resolution Order</strong>:</p><ol><li>Topological sort of dependencies</li><li>Initialize required plugins first</li><li>Pass instances via InitContext</li><li>Fail if circular dependencies detected</li></ol><h2 id=plugin-configuration>Plugin Configuration</h2><h3 id=configuration-file>Configuration File</h3><p><strong>Location</strong>: <code>/etc/containerd/config.toml</code></p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml><span style=display:flex><span><span style=color:#a6e22e>version</span> = <span style=color:#ae81ff>2</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[<span style=color:#a6e22e>plugins</span>]
+</span></span><span style=display:flex><span>  [<span style=color:#a6e22e>plugins</span>.<span style=color:#e6db74>&#34;io.containerd.content.v1.content&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#75715e># Content plugin config</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>  [<span style=color:#a6e22e>plugins</span>.<span style=color:#e6db74>&#34;io.containerd.snapshotter.v1.overlayfs&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>root_path</span> = <span style=color:#e6db74>&#34;/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>upperdir_label</span> = <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>sync_remove</span> = <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>  [<span style=color:#a6e22e>plugins</span>.<span style=color:#e6db74>&#34;io.containerd.gc.v1.scheduler&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>pause_threshold</span> = <span style=color:#ae81ff>0.02</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>deletion_threshold</span> = <span style=color:#ae81ff>0</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>mutation_threshold</span> = <span style=color:#ae81ff>100</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>schedule_delay</span> = <span style=color:#e6db74>&#34;0s&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>  [<span style=color:#a6e22e>plugins</span>.<span style=color:#e6db74>&#34;io.containerd.grpc.v1.cri&#34;</span>]
+</span></span><span style=display:flex><span>    <span style=color:#75715e># CRI plugin config</span>
+</span></span><span style=display:flex><span>    [<span style=color:#a6e22e>plugins</span>.<span style=color:#e6db74>&#34;io.containerd.grpc.v1.cri&#34;</span>.<span style=color:#a6e22e>containerd</span>]
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>default_runtime_name</span> = <span style=color:#e6db74>&#34;runc&#34;</span>
+</span></span><span style=display:flex><span>      <span style=color:#a6e22e>snapshotter</span> = <span style=color:#e6db74>&#34;overlayfs&#34;</span>
+</span></span></code></pre></div><h3 id=config-structure>Config Structure</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Config</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Plugin-specific configuration</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// In plugin registration</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Type</span>:   <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>SnapshotPlugin</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ID</span>:     <span style=color:#e6db74>&#34;overlayfs&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Config</span>: <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>Config</span>{},  <span style=color:#75715e>// Default config</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>config</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Config</span>.(<span style=color:#f92672>*</span><span style=color:#a6e22e>Config</span>)
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Use config values</span>
+</span></span><span style=display:flex><span>    },
+</span></span><span style=display:flex><span>})
+</span></span></code></pre></div><h3 id=config-migration>Config Migration</h3><p>Plugins can provide config migration:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#a6e22e>registry</span>.<span style=color:#a6e22e>Register</span>(<span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Registration</span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Type</span>:   <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>GRPCPlugin</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ID</span>:     <span style=color:#e6db74>&#34;cri&#34;</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Config</span>: <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>defaultConfig</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ConfigMigration</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ctx</span> <span style=color:#a6e22e>context</span>.<span style=color:#a6e22e>Context</span>, <span style=color:#a6e22e>version</span> <span style=color:#66d9ef>int</span>, <span style=color:#a6e22e>config</span> <span style=color:#66d9ef>interface</span>{}) <span style=color:#66d9ef>error</span> {
+</span></span><span style=display:flex><span>        <span style=color:#75715e>// Migrate config from old version</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>    },
+</span></span><span style=display:flex><span>})
+</span></span></code></pre></div><h2 id=plugin-properties>Plugin Properties</h2><h3 id=standard-properties>Standard Properties</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>const</span> (
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// PropertyRootDir sets the root directory property for a plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>PropertyRootDir</span> = <span style=color:#e6db74>&#34;io.containerd.plugin.root&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// PropertyStateDir sets the state directory property for a plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>PropertyStateDir</span> = <span style=color:#e6db74>&#34;io.containerd.plugin.state&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// PropertyGRPCAddress is the grpc address used for client connections</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>PropertyGRPCAddress</span> = <span style=color:#e6db74>&#34;io.containerd.plugin.grpc.address&#34;</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// PropertyTTRPCAddress is the ttrpc address</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>PropertyTTRPCAddress</span> = <span style=color:#e6db74>&#34;io.containerd.plugin.ttrpc.address&#34;</span>
+</span></span><span style=display:flex><span>)
+</span></span></code></pre></div><h3 id=accessing-properties>Accessing Properties</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>root</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Properties</span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>PropertyRootDir</span>]
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>state</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Properties</span>[<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>PropertyStateDir</span>]
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Use properties for initialization</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=plugin-metadata>Plugin Metadata</h2><h3 id=meta-structure>Meta Structure</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Meta</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Platforms supported by plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Platforms</span> []<span style=color:#a6e22e>ocispec</span>.<span style=color:#a6e22e>Platform</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Exports provided by plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Exports</span> <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Capabilities of plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Capabilities</span> []<span style=color:#66d9ef>string</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=setting-metadata>Setting Metadata</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Platforms</span> = append(<span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Platforms</span>, <span style=color:#a6e22e>platforms</span>.<span style=color:#a6e22e>DefaultSpec</span>())
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Exports</span>[<span style=color:#e6db74>&#34;root&#34;</span>] = <span style=color:#a6e22e>root</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Capabilities</span> = append(<span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Capabilities</span>, <span style=color:#e6db74>&#34;remap-ids&#34;</span>)
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>instance</span>, <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=external-plugins>External Plugins</h2><h3 id=proxy-plugins>Proxy Plugins</h3><p>External plugins via gRPC proxy:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-toml data-lang=toml><span style=display:flex><span>[<span style=color:#a6e22e>proxy_plugins</span>]
+</span></span><span style=display:flex><span>  [<span style=color:#a6e22e>proxy_plugins</span>.<span style=color:#a6e22e>custom-snapshotter</span>]
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>type</span> = <span style=color:#e6db74>&#34;snapshot&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>address</span> = <span style=color:#e6db74>&#34;/run/custom-snapshotter/snapshotter.sock&#34;</span>
+</span></span></code></pre></div><p><strong>Supported Types</strong>:</p><ul><li><code>snapshot</code>: Snapshot plugins</li><li><code>content</code>: Content plugins</li><li><code>sandbox</code>: Sandbox controllers</li><li><code>diff</code>: Diff plugins</li></ul><h3 id=runtime-plugins-v2>Runtime Plugins (V2)</h3><p>External runtime binaries:</p><p><strong>Naming</strong>: <code>containerd-shim-&lt;runtime>-&lt;version></code><br><strong>Example</strong>: <code>containerd-shim-runc-v2</code></p><p><strong>Discovery</strong>:</p><ol><li>Check <code>$PATH</code> for binary</li><li>Execute binary with shim protocol</li><li>Communicate via TTRPC</li></ol><h2 id=plugin-lifecycle>Plugin Lifecycle</h2><h3 id=lifecycle-states>Lifecycle States</h3><figure class=diagram><img src=/images/diagrams/diagram-12633f9ed823.svg alt=Diagram loading=lazy></figure><h3 id=plugin-events>Plugin Events</h3><ul><li><strong>Registration</strong>: Plugin registers via <code>init()</code></li><li><strong>Loading</strong>: Server discovers plugins</li><li><strong>Initialization</strong>: Dependencies resolved, <code>InitFn()</code> called</li><li><strong>Ready</strong>: Plugin available for use</li><li><strong>Shutdown</strong>: Server stopping, cleanup</li></ul><h2 id=plugin-best-practices>Plugin Best Practices</h2><h3 id=1-dependency-management>1. Dependency Management</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#75715e>// Declare all dependencies</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Requires</span>: []<span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>Type</span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>,
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>ContentPlugin</span>,
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>// Get dependencies safely</span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>md</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>GetSingle</span>(<span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>MetadataPlugin</span>)
+</span></span><span style=display:flex><span><span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>nil</span>, <span style=color:#a6e22e>err</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=2-configuration>2. Configuration</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#75715e>// Provide default configuration</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>Config</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>RootPath</span> <span style=color:#66d9ef>string</span> <span style=color:#e6db74>`toml:&#34;root_path&#34;`</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Option1</span>  <span style=color:#66d9ef>bool</span>   <span style=color:#e6db74>`toml:&#34;option1&#34;`</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#a6e22e>Config</span>: <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>Config</span>{
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>Option1</span>: <span style=color:#66d9ef>true</span>,  <span style=color:#75715e>// Sensible default</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=3-error-handling>3. Error Handling</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Validate configuration</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#a6e22e>config</span>.<span style=color:#a6e22e>RootPath</span> <span style=color:#f92672>==</span> <span style=color:#e6db74>&#34;&#34;</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>nil</span>, <span style=color:#a6e22e>errors</span>.<span style=color:#a6e22e>New</span>(<span style=color:#e6db74>&#34;root_path required&#34;</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Initialize with error handling</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>instance</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>NewPlugin</span>(<span style=color:#a6e22e>config</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> <span style=color:#a6e22e>err</span> <span style=color:#f92672>!=</span> <span style=color:#66d9ef>nil</span> {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>nil</span>, <span style=color:#a6e22e>fmt</span>.<span style=color:#a6e22e>Errorf</span>(<span style=color:#e6db74>&#34;failed to initialize: %w&#34;</span>, <span style=color:#a6e22e>err</span>)
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>instance</span>, <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=4-resource-cleanup>4. Resource Cleanup</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>type</span> <span style=color:#a6e22e>plugin</span> <span style=color:#66d9ef>struct</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...</span>
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>func</span> (<span style=color:#a6e22e>p</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>) <span style=color:#a6e22e>Close</span>() <span style=color:#66d9ef>error</span> {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Clean up resources</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=5-metadata-export>5. Metadata Export</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#a6e22e>InitFn</span>: <span style=color:#66d9ef>func</span>(<span style=color:#a6e22e>ic</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>) (<span style=color:#66d9ef>interface</span>{}, <span style=color:#66d9ef>error</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Export useful metadata</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Exports</span>[<span style=color:#e6db74>&#34;root&#34;</span>] = <span style=color:#a6e22e>root</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Exports</span>[<span style=color:#e6db74>&#34;version&#34;</span>] = <span style=color:#a6e22e>version</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ic</span>.<span style=color:#a6e22e>Meta</span>.<span style=color:#a6e22e>Platforms</span> = []<span style=color:#a6e22e>ocispec</span>.<span style=color:#a6e22e>Platform</span>{<span style=color:#a6e22e>platforms</span>.<span style=color:#a6e22e>DefaultSpec</span>()}
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> <span style=color:#a6e22e>instance</span>, <span style=color:#66d9ef>nil</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=plugin-testing>Plugin Testing</h2><h3 id=unit-testing>Unit Testing</h3><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>TestPlugin</span>(<span style=color:#a6e22e>t</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>testing</span>.<span style=color:#a6e22e>T</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Create test context</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>ic</span> <span style=color:#f92672>:=</span> <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>plugin</span>.<span style=color:#a6e22e>InitContext</span>{
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Properties</span>: <span style=color:#66d9ef>map</span>[<span style=color:#66d9ef>string</span>]<span style=color:#66d9ef>string</span>{
+</span></span><span style=display:flex><span>            <span style=color:#a6e22e>plugins</span>.<span style=color:#a6e22e>PropertyRootDir</span>: <span style=color:#a6e22e>t</span>.<span style=color:#a6e22e>TempDir</span>(),
+</span></span><span style=display:flex><span>        },
+</span></span><span style=display:flex><span>        <span style=color:#a6e22e>Config</span>: <span style=color:#f92672>&amp;</span><span style=color:#a6e22e>Config</span>{},
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Initialize plugin</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>instance</span>, <span style=color:#a6e22e>err</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>initFn</span>(<span style=color:#a6e22e>ic</span>)
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>require</span>.<span style=color:#a6e22e>NoError</span>(<span style=color:#a6e22e>t</span>, <span style=color:#a6e22e>err</span>)
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Test plugin functionality</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=integration-testing>Integration Testing</h3><p>Test plugin with real dependencies:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-go data-lang=go><span style=display:flex><span><span style=color:#66d9ef>func</span> <span style=color:#a6e22e>TestPluginIntegration</span>(<span style=color:#a6e22e>t</span> <span style=color:#f92672>*</span><span style=color:#a6e22e>testing</span>.<span style=color:#a6e22e>T</span>) {
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Start test server with plugins</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>server</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>startTestServer</span>(<span style=color:#a6e22e>t</span>)
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>defer</span> <span style=color:#a6e22e>server</span>.<span style=color:#a6e22e>Stop</span>()
+</span></span><span style=display:flex><span>    
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// Test plugin via gRPC</span>
+</span></span><span style=display:flex><span>    <span style=color:#a6e22e>client</span> <span style=color:#f92672>:=</span> <span style=color:#a6e22e>connectClient</span>(<span style=color:#a6e22e>t</span>, <span style=color:#a6e22e>server</span>)
+</span></span><span style=display:flex><span>    <span style=color:#75715e>// ...</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h2 id=summary>Summary</h2><p>The plugin architecture provides:</p><ol><li><strong>Modularity</strong>: Clean separation of concerns</li><li><strong>Extensibility</strong>: Easy to add new functionality</li><li><strong>Flexibility</strong>: Multiple implementations per interface</li><li><strong>Dependency Management</strong>: Automatic resolution</li><li><strong>Configuration</strong>: Per-plugin TOML configuration</li><li><strong>External Plugins</strong>: Support for out-of-process plugins</li><li><strong>Versioning</strong>: Type-based versioning (v1, v2)</li><li><strong>Platform Support</strong>: Platform-specific implementations</li></ol><p>Key plugin categories:</p><ul><li><strong>Storage</strong>: Content and snapshot plugins</li><li><strong>Services</strong>: gRPC service implementations</li><li><strong>Runtime</strong>: Task execution plugins</li><li><strong>System</strong>: GC, events, leases</li><li><strong>Integration</strong>: CRI, NRI, transfer</li></ul></article><nav class=doc-navigation><a href=/docs/02-core-packages/ class=nav-prev>← containerd Core Packages
+</a><a href=/docs/04-client-sdk/ class=nav-next>containerd Client SDK →</a></nav></div></main><div class=resizer></div></div><script src=/js/theme.js></script><script src=/js/sidebar.js></script><script src=/js/resizer.js></script></body></html>

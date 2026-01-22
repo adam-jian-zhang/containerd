@@ -1,0 +1,42 @@
+baseURL = "/"
+languageCode = "en-us"
+title = "containerd Documentation"
+theme = "containerd-docs"
+
+[params]
+  description = "Comprehensive technical documentation for containerd"
+  author = "containerd Project"
+
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
+  [markup.highlight]
+    lineNos = false
+    style = "monokai"
+
+[menu]
+  [[menu.main]]
+    name = "Architecture"
+    url = "/docs/00-architecture-overview/"
+    weight = 1
+  
+  [[menu.main]]
+    name = "API Layer"
+    url = "/docs/01-api-layer/"
+    weight = 2
+  
+  [[menu.main]]
+    name = "Core Packages"
+    url = "/docs/02-core-packages/"
+    weight = 3
+  
+  [[menu.main]]
+    name = "Plugins"
+    url = "/docs/03-plugins/"
+    weight = 4
+  
+  [[menu.main]]
+    name = "Client SDK"
+    url = "/docs/04-client-sdk/"
+    weight = 5

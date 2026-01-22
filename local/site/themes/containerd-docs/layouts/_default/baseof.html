@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} | {{ .Site.Title }}{{ end }}</title>
+    <meta name="description" content="{{ .Site.Params.description }}">
+    <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
+</head>
+<body>
+    <div class="container">
+        {{ partial "sidebar.html" . }}
+        <main class="content">
+            {{ partial "header.html" . }}
+            <div class="content-wrapper">
+                {{ block "main" . }}{{ end }}
+            </div>
+        </main>
+        <div class="resizer"></div>
+    </div>
+    <script src="{{ "js/theme.js" | relURL }}"></script>
+    <script src="{{ "js/sidebar.js" | relURL }}"></script>
+    <script src="{{ "js/resizer.js" | relURL }}"></script>
+</body>
+</html>

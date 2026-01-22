@@ -1,0 +1,8 @@
+name = "containerd-docs"
+license = "Apache-2.0"
+description = "Custom theme for containerd documentation"
+homepage = "https://containerd.io"
+min_version = "0.100.0"
+
+[author]
+  name = "containerd Project"

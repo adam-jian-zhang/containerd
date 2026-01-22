@@ -1,0 +1,48 @@
+{{ define "main" }}
+<article class="doc-content home">
+    <h1>containerd Project Documentation</h1>
+    
+    <p>This site contains comprehensive technical documentation for the containerd project, generated through code analysis and implementation review.</p>
+    
+    <h2>Documentation Index</h2>
+    
+    <div class="page-list">
+        {{ range where .Site.RegularPages "Section" "docs" }}
+        {{ if not (eq .File.LogicalName "_index.md") }}
+        <div class="page-item">
+            <h3><a href="{{ .Permalink }}">{{ .Title }}</a></h3>
+            {{ with .Description }}
+            <p>{{ . }}</p>
+            {{ else }}
+            <p>{{ .Summary }}</p>
+            {{ end }}
+        </div>
+        {{ end }}
+        {{ end }}
+    </div>
+    
+    <h2>Key Concepts</h2>
+    
+    <ul>
+        <li><strong>Content-Addressable Storage</strong> - All content identified by SHA256 digest with automatic deduplication</li>
+        <li><strong>Layered Filesystems</strong> - Snapshots provide efficient copy-on-write semantics</li>
+        <li><strong>Plugin Architecture</strong> - Modular design with easy extensibility</li>
+        <li><strong>Smart Client Model</strong> - High-level operations in the client, daemon focuses on low-level operations</li>
+        <li><strong>Daemonless Containers</strong> - Shim-based architecture allows containers to survive daemon restarts</li>
+        <li><strong>Namespace Isolation</strong> - Multi-tenancy support with separate namespaces</li>
+        <li><strong>Lease-Based Garbage Collection</strong> - Resource protection with automatic reference tracking</li>
+    </ul>
+    
+    <h2>Quick Links</h2>
+    
+    <ul>
+        <li><a href="https://containerd.io" target="_blank">Official Website</a></li>
+        <li><a href="https://github.com/containerd/containerd" target="_blank">GitHub Repository</a></li>
+        <li><a href="https://www.cncf.io/projects/containerd/" target="_blank">CNCF Project Page</a></li>
+    </ul>
+    
+    <hr>
+    
+    <p><em>This documentation was generated through comprehensive code analysis and strictly adheres to the actual implementation.</em></p>
+</article>
+{{ end }}
