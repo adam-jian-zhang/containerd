@@ -14,9 +14,15 @@ help:
 	@echo "  make docker-run       - Run Docker container (port 9006)"
 	@echo ""
 
-# Convert Mermaid diagrams to SVG
+# Convert Mermaid diagrams to SVG (default: Python parallel)
 convert-diagrams:
-	@echo "Converting Mermaid diagrams to SVG..."
+	@echo "Converting Mermaid diagrams to SVG (Python parallel)..."
+	@python3 scripts/convert-mermaid.py ../docs static/images/diagrams
+	@echo "Done!"
+
+# Convert using shell script (slower but more reliable for some environments)
+convert-diagrams-sh:
+	@echo "Converting Mermaid diagrams to SVG (shell script)..."
 	@bash scripts/convert-mermaid.sh ../docs static/images/diagrams
 	@echo "Done!"
 

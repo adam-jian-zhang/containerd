@@ -11,105 +11,152 @@ This is a static site generated using Hugo for the containerd project documentat
 - ✅ Responsive design
 - ✅ Navigation between pages
 - ✅ Clean, modern UI
+- ✅ Consistent code block styling with borders
 
 ## Prerequisites
 
-- Hugo (extended version recommended)
-- mmdc (mermaid-cli) for diagram conversion: `npm install -g @mermaid-js/mermaid-cli`
-- Docker (optional, for containerized deployment)
+1. **Hugo** (extended version)
+   ```bash
+   # macOS
+   brew install hugo
+   
+   # Linux
+   snap install hugo
+   ```
+
+2. **Mermaid CLI** (for diagram conversion)
+   ```bash
+   npm install -g @mermaid-js/mermaid-cli
+   ```
+
+3. **Docker** (optional, for containerized deployment)
+
+4. **Python 3** (optional, for faster parallel conversion)
 
 ## Quick Start
 
-### Build and Serve Locally
+### Option 1: Local Development Server
 
 ```bash
-# Build everything
-make all
-
-# Or serve with live reload
+cd local/site
 make serve
 ```
 
-The site will be available at http://localhost:1313
+Visit: http://localhost:1313
 
-### Build Individual Components
+### Option 2: Build Static Site
 
 ```bash
-# Convert Mermaid diagrams to SVG
-make convert-diagrams
-
-# Process markdown files
-make process-docs
-
-# Build Hugo site
-make build
+cd local/site
+make all
 ```
 
-### Docker Deployment
+The built site will be in `public/` directory.
+
+### Option 3: Docker Container
 
 ```bash
-# Build Docker image
+cd local/site
 make docker-build
-
-# Run container
 make docker-run
 ```
 
-The site will be available at http://localhost:9006
+Visit: http://localhost:9006
+
+## Features
+
+✅ **Dark/Light Theme** - Click sun/moon icon in header  
+✅ **Collapsible Sidebar** - Click menu icon to collapse to icons only  
+✅ **Resizable Sidebar** - Drag the divider between sidebar and content  
+✅ **Fast Loading** - All Mermaid diagrams pre-converted to SVG  
+✅ **Responsive** - Works on mobile and desktop  
+✅ **Navigation** - Previous/Next links at bottom of pages  
+✅ **Code Blocks** - Consistent styling with borders matching reference design
+
+## Makefile Targets
+
+```bash
+make help              # Show all available targets
+make convert-diagrams  # Convert Mermaid to SVG (Python parallel - default)
+make convert-diagrams-sh # Convert using shell script (fallback)
+make process-docs      # Process markdown files
+make build             # Build Hugo site
+make serve             # Serve locally with live reload
+make clean             # Remove generated files
+make all               # Build everything from scratch
+make docker-build      # Build Docker image
+make docker-run        # Run Docker container (port 9006)
+make docker-stop       # Stop Docker container
+```
+
+## Diagram Conversion
+
+### Python Script (Default)
+The default `convert-mermaid.py` script converts diagrams in parallel for fast conversion:
+
+```bash
+make convert-diagrams  # Uses Python by default
+```
+
+**Features**:
+- ✅ Parallel conversion with 2 workers (configurable)
+- ✅ Automatic Chrome/Chromium detection
+- ✅ Progress reporting with success/failure counts
+- ✅ Much faster than sequential shell script
+
+**Note**: When converting all diagrams from scratch, some may timeout due to Chrome resource contention. Simply rerun the command - already converted diagrams are skipped and only failed ones are retried.
+
+### Shell Script (Fallback)
+A shell script version is available as a fallback:
+
+```bash
+make convert-diagrams-sh
+```
+
+This is slower but may be more reliable in some environments.
 
 ## Directory Structure
 
 ```
 site/
-├── content/docs/          # Processed markdown content (generated)
+├── content/docs/          # Hugo content (auto-generated)
 ├── static/
 │   ├── css/              # Stylesheets
-│   ├── js/               # JavaScript files
-│   └── images/diagrams/  # SVG diagrams (generated)
+│   ├── js/               # JavaScript
+│   └── images/diagrams/  # SVG diagrams (auto-generated)
 ├── themes/containerd-docs/
-│   ├── layouts/          # Hugo templates
-│   ├── static/           # Theme assets
-│   └── theme.toml
+│   ├── layouts/          # HTML templates
+│   └── static/           # Theme assets
 ├── scripts/
-│   ├── convert-mermaid.sh   # Mermaid to SVG converter
-│   └── process-docs.sh      # Markdown processor
-├── public/               # Built site (generated)
-├── hugo.toml            # Hugo configuration
+│   ├── convert-mermaid.sh    # Shell conversion script
+│   ├── convert-mermaid.py    # Python conversion script (parallel)
+│   ├── process-docs-v2.sh    # Markdown processor
+│   └── verify-build.sh       # Build verification
+├── public/               # Built site (auto-generated)
+├── hugo.toml            # Hugo config
 ├── Makefile             # Build automation
 └── Dockerfile           # Container image
 ```
 
-## Features Details
-
-### Theme Toggle
-
-Click the sun/moon icon in the header to switch between light and dark themes. Your preference is saved in localStorage.
-
-### Sidebar
-
-- **Collapse/Expand**: Click the menu icon to toggle between full and icon-only sidebar
-- **Resize**: Drag the divider between sidebar and content to adjust width
-- **Tooltips**: Hover over icons in collapsed mode to see page names
-- **Mobile**: Sidebar slides in/out on mobile devices
-
-### Diagrams
-
-Mermaid diagrams are pre-converted to SVG files for:
-- Faster page load times
-- Better browser compatibility
-- No client-side rendering overhead
-
-SVG files are named using content hash to avoid duplicates.
-
 ## Customization
 
-### Theme Colors
+### Change Colors
 
-Edit `themes/containerd-docs/static/css/style.css` and modify the CSS variables in `:root` and `[data-theme="dark"]`.
+Edit `themes/containerd-docs/static/css/style.css`:
 
-### Navigation
+```css
+:root {
+    --bg-primary: #ffffff;
+    --link-color: #0066cc;
+    --code-bg: #f8f9fa;
+    --code-border: #dee2e6;
+    /* ... more variables */
+}
+```
 
-Edit `hugo.toml` to add/remove menu items:
+### Add Menu Items
+
+Edit `hugo.toml`:
 
 ```toml
 [[menu.main]]
@@ -118,41 +165,108 @@ Edit `hugo.toml` to add/remove menu items:
   weight = 10
 ```
 
-### Layout
+### Modify Layout
 
-Modify templates in `themes/containerd-docs/layouts/`:
+Edit templates in `themes/containerd-docs/layouts/`:
 - `_default/baseof.html` - Base template
-- `_default/single.html` - Single page template
-- `_default/list.html` - List page template
-- `partials/` - Reusable components
-
-## Cleaning Up
-
-```bash
-# Remove all generated files
-make clean
-```
+- `_default/single.html` - Page template
+- `_default/list.html` - List template
+- `partials/header.html` - Header
+- `partials/sidebar.html` - Sidebar
 
 ## Troubleshooting
 
-### Mermaid Conversion Errors
+### mmdc not found
 
-If diagrams fail to convert, check:
-1. mmdc is installed: `mmdc --version`
-2. Diagram syntax is valid
-3. Check error messages in conversion output
+```bash
+npm install -g @mermaid-js/mermaid-cli
+```
 
-### Hugo Build Errors
+### Hugo not found
 
-1. Ensure Hugo is installed: `hugo version`
-2. Check hugo.toml for syntax errors
-3. Verify theme directory exists
+```bash
+# macOS
+brew install hugo
 
-### Docker Issues
+# Linux
+snap install hugo
+```
 
-1. Ensure Docker is running: `docker ps`
-2. Check if port 9006 is available
-3. View logs: `docker logs containerd-docs`
+### Port already in use
+
+```bash
+# For local server (default 1313)
+lsof -ti:1313 | xargs kill -9
+
+# For Docker (port 9006)
+make docker-stop
+```
+
+### Diagrams not showing
+
+1. Check SVG files exist: `ls static/images/diagrams/`
+2. Run conversion: `make convert-diagrams`
+3. Rebuild: `make build`
+
+### Slow diagram conversion
+
+Try the Python parallel version:
+```bash
+make convert-diagrams-py
+```
+
+Or adjust MAX_JOBS in the shell script:
+```bash
+MAX_JOBS=16 make convert-diagrams
+```
+
+## Development Workflow
+
+1. Edit markdown files in `../docs/`
+2. Run `make serve` for live reload
+3. View changes at http://localhost:1313
+4. Build final site: `make build`
+5. Deploy `public/` directory
+
+## Production Deployment
+
+### Static Hosting (Netlify, Vercel, GitHub Pages)
+
+```bash
+make build
+# Deploy public/ directory
+```
+
+### Docker Deployment
+
+```bash
+make docker-build
+docker push your-registry/containerd-docs:latest
+docker run -d -p 9006:9006 your-registry/containerd-docs:latest
+```
+
+### Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name docs.example.com;
+    root /path/to/public;
+    index index.html;
+    
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
+
+## Support
+
+For issues or questions:
+- Check the QUICKSTART.md for quick start guide
+- Check the DEPLOYMENT.md for deployment options
+- Review Hugo documentation: https://gohugo.io/
+- Check containerd docs: https://containerd.io/
 
 ## License
 
